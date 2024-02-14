@@ -11,13 +11,14 @@ import {
   RawBodyRequest,
   HttpStatus,
   Inject,
+  Get,
 } from '@nestjs/common';
 import { StripeService } from './stripe.service';
 import { InitiatePaymentDto } from './dto/initiatePayment.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiOkResponse, ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import Stripe from 'stripe';
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 
 @ApiTags('stripe')
@@ -47,19 +48,22 @@ export class StripeController {
   }
 
   @Post('/webhook')
-  async getWebhook(
+  async handleWebhook(
     @Headers('stripe-signature') signature: string,
     @Req() req: RawBodyRequest<Request>,
     @Res() response: Response,
   ) {
-    let event: Stripe.Event;
+    // let event: Stripe.Event;
+    console.log('Received event:', req);
+    console.log('Received event:', req.rawBody);
 
     try {
-      event = this.client.webhooks.constructEvent(
+      const event = this.client.webhooks.constructEvent(
         req.rawBody,
         signature,
         this.config.get('STRIPE_WEBHOOK_SECRET'),
       );
+
       switch (event.type) {
         case 'checkout.session.completed':
           await this.stripeService.processSessionCheckout(event);
@@ -71,10 +75,20 @@ export class StripeController {
         default:
           break;
       }
+
+      response.status(HttpStatus.OK).send();
     } catch (err) {
-      console.error(`Error message: ${err.message}`);
+      console.error('Webhook processing error:', err);
       response.status(400).send(`Webhook Error: ${err.message}`);
     }
-    response.status(HttpStatus.OK).send();
+  }
+  @Get('success')
+  paymentSuccess(): string {
+    return this.stripeService.paymentSuccess();
+  }
+
+  @Get('failure')
+  paymentFailure(): string {
+    return this.stripeService.paymentFailure();
   }
 }

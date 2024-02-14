@@ -36,8 +36,8 @@ export class StripeService {
       }
       const userId = user._id;
       const paymentId = await this.generateSecureRandomString(12);
-      const successUrl = 'https://www.google.com/';
-      const cancelUrl = 'https://www.goal.com/en-ng';
+      const successUrl = ' http://localhost:4000/api/v1/stripe/success';
+      const cancelUrl = 'http://localhost:4000/api/v1/stripe/failure';
 
       const session = await this.stripe.checkout.sessions.create({
         line_items: [
