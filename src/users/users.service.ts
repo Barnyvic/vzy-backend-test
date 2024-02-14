@@ -13,7 +13,7 @@ export class UsersService {
   async createUser(createUserDto: CreateUserDto): Promise<ApiResponse<any>> {
     try {
       const existingUser = await this.usersRepository.findOne({
-        email: createUserDto.email,
+        email: createUserDto.email.toLowerCase(),
       });
 
       if (existingUser) {
