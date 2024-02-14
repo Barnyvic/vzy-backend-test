@@ -4,11 +4,12 @@ import { UsersService } from 'src/users/users.service';
 import { PaymentRequestRepository } from './PaymentRequest.repository';
 import Stripe from 'stripe';
 import { InitiatePaymentDto } from './dto/initiatePayment.dto';
-import { HandleError, HandleSuccess } from 'src/common/utils/response';
+import { ApiResponse } from 'src/common/utils/response';
 import { randomBytes } from 'crypto';
 import { PaymentRequest } from './schema/payment-request-schema';
 import { UserDocument } from 'src/users/schema/users-schema';
 import { TransactionStatus } from './enums/payment-enum';
+import { PagingOptions } from 'src/common/utils/pagination.dto';
 
 @Injectable()
 export class StripeService {
@@ -23,23 +24,26 @@ export class StripeService {
     private readonly usersService: UsersService,
   ) {}
 
-  async initiateCheckout(Id: string, paymentData: InitiatePaymentDto) {
+  async initiateCheckout(
+    Id: string,
+    paymentData: InitiatePaymentDto,
+  ): Promise<ApiResponse<any>> {
     try {
       const user = await this.usersService.findById(Id);
       if (!user) {
-        return HandleError({
+        return {
           error: true,
           statusCode: HttpStatus.BAD_REQUEST,
           message: 'User not found.',
           data: null,
-        });
+        };
       }
       const userId = user._id;
       const paymentId = await this.generateSecureRandomString(12);
       const successUrl =
-        ' https://motionless-red-stockings.cyclic.app/api/v1/stripe/success';
+        'https://vzy-backend-test-9qz0.onrender.com/api/v1/stripe/success';
       const cancelUrl =
-        'https://motionless-red-stockings.cyclic.app/api/v1/stripe/failure';
+        'https://vzy-backend-test-9qz0.onrender.com/api/v1/stripe/failure';
 
       const session = await this.stripe.checkout.sessions.create({
         line_items: [
@@ -60,37 +64,38 @@ export class StripeService {
           paymentId: `${paymentId}`,
           userId: `${userId}`,
         },
+        payment_intent_data: {
+          metadata: {
+            paymentId: `${paymentId}`,
+            userId: `${userId}`,
+          },
+        },
         success_url: `${successUrl}`,
         cancel_url: `${cancelUrl}`,
       });
       if (session) {
-        await this.createPaymentRequest(
-          user,
-          session,
-          paymentId,
-          paymentData.amount,
-        );
+        await this.createPaymentRequest(user, paymentId, paymentData.amount);
 
-        return HandleSuccess({
+        return {
           error: false,
           statusCode: HttpStatus.CREATED,
           message: 'checkout created successfully.',
           data: session,
-        });
+        };
       }
     } catch (error) {
       console.log(error);
-      return HandleError({
+      return {
         error: true,
-        status: error.statusCode || HttpStatus.INTERNAL_SERVER_ERROR,
+        statusCode: error.statusCode || HttpStatus.INTERNAL_SERVER_ERROR,
         message: error.message || 'An unexpected error occurred.',
-      });
+        data: null,
+      };
     }
   }
 
   private async createPaymentRequest(
     user: UserDocument,
-    session: Stripe.Checkout.Session,
     paymentId: string,
     amount: number,
   ): Promise<PaymentRequest> {
@@ -116,7 +121,7 @@ export class StripeService {
         paymentId: webHookResponseData.data.object.metadata.paymentId,
       });
 
-    if (webHookResponseData.type === 'payment_intent.succeeded') {
+    if (webHookResponseData.type === 'charge.succeeded') {
       getUpdatedTransactionStatus.transactionStatus = TransactionStatus.Paid;
       await getUpdatedTransactionStatus.save();
     } else if (webHookResponseData.type === 'charge.failed') {
@@ -141,5 +146,41 @@ export class StripeService {
 
   paymentFailure(): string {
     return 'Payment Successful!!!!!';
+  }
+
+  async getAllPaidTransactions(
+    options: PagingOptions,
+  ): Promise<ApiResponse<any>> {
+    try {
+      const paidTransactions = await this.paymentRequestRepository.find(
+        {
+          transactionStatus: TransactionStatus.Paid,
+        },
+        options,
+      );
+
+      if (paidTransactions.length === 0) {
+        return {
+          error: true,
+          statusCode: HttpStatus.NOT_FOUND,
+          message: 'No paid transactions found.',
+          data: null,
+        };
+      }
+
+      return {
+        error: false,
+        statusCode: HttpStatus.OK,
+        message: 'All paid transactions successfully fetched.',
+        data: paidTransactions,
+      };
+    } catch (error) {
+      return {
+        error: true,
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: error.message || 'An unexpected error occurred.',
+        data: null,
+      };
+    }
   }
 }

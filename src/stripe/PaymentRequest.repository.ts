@@ -57,8 +57,9 @@ export class PaymentRequestRepository {
   ): Promise<PaymentRequest[]> {
     return this.model
       .find(findQuery)
-      .skip(option?.skip)
-      .limit(option?.limit)
+      .skip(option?.skip || 0)
+      .limit(option?.limit || 5)
+      .sort({ createdAt: -1 })
       .exec();
   }
 }

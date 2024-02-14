@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable prefer-const */
 import {
   Body,
@@ -12,6 +13,7 @@ import {
   HttpStatus,
   Inject,
   Get,
+  Query,
 } from '@nestjs/common';
 import { StripeService } from './stripe.service';
 import { InitiatePaymentDto } from './dto/initiatePayment.dto';
@@ -20,6 +22,7 @@ import { ApiOkResponse, ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import Stripe from 'stripe';
 import { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
+import { PagingOptions } from 'src/common/utils/pagination.dto';
 
 @ApiTags('stripe')
 @Controller('stripe')
@@ -53,12 +56,10 @@ export class StripeController {
     @Req() req: RawBodyRequest<Request>,
     @Res() response: Response,
   ) {
-    // let event: Stripe.Event;
-    console.log('Received event:', req);
-    console.log('Received event:', req.rawBody);
+    let event: Stripe.Event;
 
     try {
-      const event = this.client.webhooks.constructEvent(
+      event = this.client.webhooks.constructEvent(
         req.rawBody,
         signature,
         this.config.get('STRIPE_WEBHOOK_SECRET'),
@@ -90,5 +91,12 @@ export class StripeController {
   @Get('failure')
   paymentFailure(): string {
     return this.stripeService.paymentFailure();
+  }
+
+  @Get('/paid-transactions')
+  @UseGuards(AuthGuard())
+  @ApiBearerAuth()
+  async getAllPaidTransactions(@Query() options: PagingOptions) {
+    return this.stripeService.getAllPaidTransactions(options);
   }
 }
