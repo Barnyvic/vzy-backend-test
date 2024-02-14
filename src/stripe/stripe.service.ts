@@ -36,8 +36,10 @@ export class StripeService {
       }
       const userId = user._id;
       const paymentId = await this.generateSecureRandomString(12);
-      const successUrl = ' http://localhost:4000/api/v1/stripe/success';
-      const cancelUrl = 'http://localhost:4000/api/v1/stripe/failure';
+      const successUrl =
+        ' https://motionless-red-stockings.cyclic.app/api/v1/stripe/success';
+      const cancelUrl =
+        'https://motionless-red-stockings.cyclic.app/api/v1/stripe/failure';
 
       const session = await this.stripe.checkout.sessions.create({
         line_items: [
