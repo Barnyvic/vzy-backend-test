@@ -40,10 +40,8 @@ export class StripeService {
       }
       const userId = user._id;
       const paymentId = await this.generateSecureRandomString(12);
-      const successUrl =
-        'https://vzy-backend-test-9qz0.onrender.com/api/v1/stripe/success';
-      const cancelUrl =
-        'https://vzy-backend-test-9qz0.onrender.com/api/v1/stripe/failure';
+      const successUrl = this.configService.get('SUCCESS_URL');
+      const cancelUrl = this.configService.get('CANCEL_URL');
 
       const session = await this.stripe.checkout.sessions.create({
         line_items: [

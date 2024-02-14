@@ -18,11 +18,17 @@ import {
 import { StripeService } from './stripe.service';
 import { InitiatePaymentDto } from './dto/initiatePayment.dto';
 import { AuthGuard } from '@nestjs/passport';
-import { ApiOkResponse, ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiOkResponse,
+  ApiBearerAuth,
+  ApiTags,
+  ApiResponse,
+} from '@nestjs/swagger';
 import Stripe from 'stripe';
 import { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { PagingOptions } from 'src/common/utils/pagination.dto';
+import { TransactionsResponseDto } from './dto/all-transactions-response.dto';
 
 @ApiTags('stripe')
 @Controller('stripe')
@@ -94,6 +100,7 @@ export class StripeController {
   }
 
   @Get('/paid-transactions')
+  @ApiResponse({ type: TransactionsResponseDto })
   @UseGuards(AuthGuard())
   @ApiBearerAuth()
   async getAllPaidTransactions(@Query() options: PagingOptions) {
